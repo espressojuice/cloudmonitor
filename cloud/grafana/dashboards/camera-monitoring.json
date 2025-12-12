@@ -103,25 +103,25 @@
             "refId": "latency"
           },
           {
-            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[1h])",
+            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[1h]) OR on(name) (max by (name) (gatus_results_total{group=~\"$location\", type=\"ICMP\"}) * 0)",
             "format": "table",
             "instant": true,
             "refId": "down1h"
           },
           {
-            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[4h])",
+            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[4h]) OR on(name) (max by (name) (gatus_results_total{group=~\"$location\", type=\"ICMP\"}) * 0)",
             "format": "table",
             "instant": true,
             "refId": "down4h"
           },
           {
-            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[1d])",
+            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[1d]) OR on(name) (max by (name) (gatus_results_total{group=~\"$location\", type=\"ICMP\"}) * 0)",
             "format": "table",
             "instant": true,
             "refId": "down1d"
           },
           {
-            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[7d])",
+            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[7d]) OR on(name) (max by (name) (gatus_results_total{group=~\"$location\", type=\"ICMP\"}) * 0)",
             "format": "table",
             "instant": true,
             "refId": "down7d"
