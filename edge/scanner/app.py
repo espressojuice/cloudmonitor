@@ -159,6 +159,7 @@ def generate_gatus_config():
 # Load data on startup
 load_monitored_devices()
 load_locations()
+generate_gatus_config()  # Regenerate config on startup
 
 
 @app.get("/", response_class=HTMLResponse)
