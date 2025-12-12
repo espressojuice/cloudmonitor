@@ -301,6 +301,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .btn-primary { background: #00d4ff; color: #000; }
         .btn-primary:hover { background: #00b8e6; }
         .btn-primary:disabled { background: #555; color: #888; cursor: not-allowed; }
+        .btn-secondary { background: #444; color: #fff; }
+        .btn-secondary:hover { background: #555; }
         .btn-success { background: #00c853; color: #fff; }
         .btn-success:hover { background: #00a844; }
         .btn-danger { background: #ff4757; color: #fff; }
@@ -431,6 +433,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <div class="form-row">
                     <span class="form-label">Subnets:</span>
                     <input type="text" id="subnets" value="{{SUBNETS}}" placeholder="192.168.1.0/24, 10.0.0.0/24">
+                    <button class="btn btn-secondary" onclick="detectSubnets()" title="Auto-detect local subnets">
+                        Detect
+                    </button>
                     <button class="btn btn-primary" id="scan-btn" onclick="startScan()">
                         Scan Network
                     </button>
@@ -479,6 +484,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             if (tab === 'monitored') {
                 loadMonitored();
+            }
+        }
+
+        async function detectSubnets() {
+            try {
+                const resp = await fetch('/api/subnets');
+                const data = await resp.json();
+                document.getElementById('subnets').value = data.subnets.join(', ');
+            } catch (e) {
+                alert('Error detecting subnets: ' + e.message);
             }
         }
 
