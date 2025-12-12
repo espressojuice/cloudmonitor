@@ -1,7 +1,6 @@
 services:
   scanner:
     build: ./scanner
-    image: ghcr.io/espressojuice/cloudmonitor/scanner:${VERSION:-latest}
     container_name: cloudmonitor-scanner
     restart: unless-stopped
     network_mode: host
@@ -11,9 +10,15 @@ services:
       - ALL
     environment:
       - LOCATION=${LOCATION:-edge}
-      - SCAN_INTERVAL_HOURS=${SCAN_INTERVAL_HOURS:-1}
+      - GATUS_CONFIG_PATH=/config/gatus/config.yaml
+      - MONITORED_FILE=/config/monitored.json
     volumes:
-      - gatus-config:/config/gatus
+      - config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   gatus:
     image: twinproduction/gatus:v5.7.0
@@ -25,7 +30,7 @@ services:
     cap_drop:
       - ALL
     volumes:
-      - gatus-config:/config:ro
+      - config:/config:ro
     command: ["--config", "/config/gatus/config.yaml"]
     depends_on:
       - scanner
@@ -34,7 +39,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 90s
+      start_period: 30s
     logging:
       driver: json-file
       options:
@@ -70,5 +75,5 @@ services:
         max-file: "3"
 
 volumes:
-  gatus-config:
+  config:
   vmagent-data:

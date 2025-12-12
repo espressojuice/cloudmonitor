@@ -1,76 +1,83 @@
 # CloudMonitor
 
-Distributed network camera monitoring system.
+Distributed network camera monitoring with a web UI for manual device selection.
+
+## Features
+
+- **Web UI** for scanning networks and selecting cameras to monitor
+- **MAC OUI detection** - Identifies camera manufacturers (Hikvision, Dahua, Axis, etc.)
+- **RTSP port scanning** - Detects cameras by open port 554
+- **Manual selection** - You choose which devices to monitor, not automatic
+- **Push-based metrics** - Edge pushes to central VictoriaMetrics (outbound only)
+- **Grafana dashboards** - Visualize camera health across all locations
 
 ## Architecture
 
 ```
-Edge Device(s)                          Cloud Server
-┌────────────────────┐                  ┌────────────────────┐
-│  cloudmonitor-     │                  │  VictoriaMetrics   │
-│  scanner           │                  │  (metrics storage) │
-│  - Scans network   │                  │                    │
-│  - Finds cameras   │                  │  Grafana           │
-│  - Generates config│                  │  (dashboards)      │
-│                    │                  │                    │
-│  cloudmonitor-     │   push metrics   │                    │
-│  gatus ──────────────────────────────►│                    │
-│  - Health checks   │   (vmagent)      │                    │
-│  - Ping + RTSP     │                  │                    │
-│                    │                  │                    │
-│  cloudmonitor-     │                  │                    │
-│  vmagent           │                  │                    │
-│  - Scrapes Gatus   │                  │                    │
-│  - Pushes to cloud │                  │                    │
-└────────────────────┘                  └────────────────────┘
+Edge Device                              Cloud Server (178.156.175.240)
+┌────────────────────────────────┐      ┌──────────────────────────┐
+│  Scanner UI (:8081)            │      │  VictoriaMetrics (:8428) │
+│  - Scan subnets                │      │  - Stores metrics        │
+│  - Select cameras              │      │                          │
+│  - Add to monitoring           │      │  Grafana (:3000)         │
+│                                │      │  - Dashboards            │
+│  Gatus (:8080)                 │      │                          │
+│  - Ping cameras                │      │                          │
+│  - Check RTSP ports            │      │                          │
+│                    push ──────────────►                          │
+│  vmagent                       │      │                          │
+│  - Scrape Gatus metrics        │      │                          │
+└────────────────────────────────┘      └──────────────────────────┘
 ```
 
-## Cloud Setup
+## Quick Start
 
-1. SSH to your cloud server
-2. Clone this repo and go to `cloud/` directory
-3. Create `.env` from `.env.example`:
-   ```bash
-   cp .env.example .env
-   # Edit with secure passwords
-   ```
-4. Start services:
-   ```bash
-   docker compose up -d
-   ```
-
-**Access:**
-- Grafana: `http://your-server:3000`
-- VictoriaMetrics: `http://your-server:8428`
-
-## Edge Installation
-
-Run on each edge device:
+### Edge Installation
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/espressojuice/cloudmonitor/main/edge/install.sh | sudo bash
 ```
 
-This installs:
-- **Scanner** - Discovers cameras on local network by MAC address + RTSP port
-- **Gatus** - Health checks (ping + TCP) for discovered cameras
-- **vmagent** - Pushes metrics to central VictoriaMetrics
+Then open `http://<edge-ip>:8081` to access the Scanner UI.
 
-### Edge Commands
+### Cloud Setup
+
+SSH to your cloud server:
 
 ```bash
-cloudmonitor-status  # Check service status
-cloudmonitor-scan    # Trigger network scan
-cloudmonitor-logs    # View scanner logs
+cd /opt/cloudmonitor
+git clone https://github.com/espressojuice/cloudmonitor.git .
+cd cloud
+cp .env.example .env
+# Edit .env with secure passwords
+docker compose up -d
 ```
 
-## Camera Detection
+## Usage
 
-Cameras are identified by:
-1. **MAC OUI** - First 3 bytes identify manufacturer (Hikvision, Dahua, Axis, etc.)
-2. **RTSP Port** - Port 554 open indicates video streaming device
+1. **Open Scanner UI** at `http://<edge-ip>:8081`
+2. **Enter subnets** to scan (e.g., `192.168.1.0/24, 10.0.0.0/24`)
+3. **Click "Scan Network"** - takes 1-2 minutes per subnet
+4. **Review discovered devices** - cameras are highlighted
+5. **Select devices** to monitor (checkbox)
+6. **Click "Add to Monitoring"**
 
-Supported manufacturers:
+Gatus will start monitoring the selected devices immediately.
+
+## Ports
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| Scanner UI | 8081 | Web interface for scanning |
+| Gatus | 8080 | Health check dashboard + metrics |
+| vmagent | 8429 | Metrics scraper |
+| VictoriaMetrics | 8428 | Time series database |
+| Grafana | 3000 | Dashboards |
+
+## Supported Camera Manufacturers
+
+Cameras are identified by MAC address OUI:
+
 - Hikvision
 - Dahua
 - Axis
@@ -83,7 +90,6 @@ Supported manufacturers:
 - Reolink
 - Amcrest
 - Foscam
-- TP-Link
 - Ubiquiti
 
 ## Configuration
@@ -91,8 +97,7 @@ Supported manufacturers:
 ### Edge `.env`
 
 ```bash
-LOCATION=site-name          # Location identifier (shown in Grafana)
-SCAN_INTERVAL_HOURS=1       # How often to scan for new cameras
+LOCATION=site-name              # Shows in Grafana grouping
 REMOTE_WRITE_URL=http://cloud:8428/api/v1/write
 VM_AUTH_USER=admin
 VM_AUTH_PASS=your-password
@@ -106,14 +111,12 @@ VM_AUTH_PASS=your-password
 GRAFANA_PASS=your-password
 ```
 
-## Ports
+## Commands
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Gatus | 8080 | Health check UI + metrics |
-| vmagent | 8429 | Metrics scraper |
-| VictoriaMetrics | 8428 | Time series database |
-| Grafana | 3000 | Dashboards |
+```bash
+cloudmonitor-status   # Check service status
+cloudmonitor-logs     # View scanner logs
+```
 
 ## License
 

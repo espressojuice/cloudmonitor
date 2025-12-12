@@ -6,7 +6,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     iputils-ping \
     net-tools \
-    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -14,10 +13,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scanner.py .
+COPY app.py .
 
-# Default environment
 ENV LOCATION=edge
-ENV SCAN_INTERVAL_HOURS=1
+ENV GATUS_CONFIG_PATH=/config/gatus/config.yaml
+ENV MONITORED_FILE=/config/monitored.json
 
-ENTRYPOINT ["python", "scanner.py"]
-CMD ["--output", "/config/gatus/config.yaml"]
+EXPOSE 8081
+
+CMD ["python", "app.py"]
