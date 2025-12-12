@@ -29,9 +29,10 @@ services:
       - NET_RAW      # For ICMP ping
     cap_drop:
       - ALL
+    environment:
+      - GATUS_CONFIG_PATH=/config/gatus/config.yaml
     volumes:
       - config:/config:ro
-    command: ["--config", "/config/gatus/config.yaml"]
     depends_on:
       - scanner
     healthcheck:
