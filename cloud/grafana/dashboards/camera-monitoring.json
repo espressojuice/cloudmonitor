@@ -5,7 +5,7 @@
     "tags": ["cameras", "monitoring"],
     "timezone": "browser",
     "schemaVersion": 38,
-    "refresh": "30s",
+    "refresh": "1m",
     "templating": {
       "list": [
         {
@@ -29,7 +29,7 @@
         "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
         "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
         "targets": [{
-          "expr": "count by (group) (gatus_results_total{type=\"ICMP\"})",
+          "expr": "count by (group) (count by (group, name) (gatus_results_total{type=\"ICMP\"}))",
           "format": "table",
           "instant": true
         }],
@@ -45,73 +45,37 @@
         "id": 2,
         "title": "Total Cameras",
         "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+        "gridPos": {"h": 8, "w": 4, "x": 8, "y": 0},
         "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{"expr": "count(gatus_results_total{group=~\"$location\", type=\"ICMP\"})", "instant": true}],
+        "targets": [{"expr": "count(count by (name) (gatus_results_total{group=~\"$location\", type=\"ICMP\"}))", "instant": true}],
         "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "blue", "value": null}]}}}
       },
       {
         "id": 3,
         "title": "Online Now",
         "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+        "gridPos": {"h": 8, "w": 4, "x": 12, "y": 0},
         "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{"expr": "count(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"})", "instant": true}],
+        "targets": [{"expr": "count(count by (name) (increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[2m]) > 0))", "instant": true}],
         "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}]}}}
       },
       {
         "id": 4,
         "title": "Offline Now",
         "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+        "gridPos": {"h": 8, "w": 4, "x": 16, "y": 0},
         "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{"expr": "count(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}) OR on() vector(0)", "instant": true}],
+        "targets": [{"expr": "count(count by (name) (gatus_results_total{group=~\"$location\", type=\"ICMP\"})) - count(count by (name) (increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[2m]) > 0)) OR on() vector(0)", "instant": true}],
         "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}}
       },
       {
         "id": 5,
         "title": "Active Locations",
         "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+        "gridPos": {"h": 8, "w": 4, "x": 20, "y": 0},
         "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
         "targets": [{"expr": "count(count by (group) (gatus_results_total))", "instant": true}],
         "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "purple", "value": null}]}}}
-      },
-      {
-        "id": 6,
-        "title": "Uptime - Last Hour",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 4},
-        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{"expr": "avg(increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[1h]) / (increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[1h]) + increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[1h]))) * 100", "instant": true}],
-        "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 95}, {"color": "green", "value": 99}]}}}
-      },
-      {
-        "id": 7,
-        "title": "Uptime - Last 12h",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 12, "y": 4},
-        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{"expr": "avg(increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[12h]) / (increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[12h]) + increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[12h]))) * 100", "instant": true}],
-        "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 95}, {"color": "green", "value": 99}]}}}
-      },
-      {
-        "id": 8,
-        "title": "Uptime - Last 7d",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 16, "y": 4},
-        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{"expr": "avg(increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[7d]) / (increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[7d]) + increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[7d]))) * 100", "instant": true}],
-        "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 95}, {"color": "green", "value": 99}]}}}
-      },
-      {
-        "id": 9,
-        "title": "Uptime - Last 30d",
-        "type": "stat",
-        "gridPos": {"h": 4, "w": 4, "x": 20, "y": 4},
-        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{"expr": "avg(increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[30d]) / (increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[30d]) + increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[30d]))) * 100", "instant": true}],
-        "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 95}, {"color": "green", "value": 99}]}}}
       },
       {
         "id": 10,
@@ -121,7 +85,13 @@
         "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
         "targets": [
           {
-            "expr": "gatus_results_total{group=~\"$location\", type=\"ICMP\"}",
+            "expr": "max by (name, group) (gatus_results_total{group=~\"$location\", type=\"ICMP\"}) * 0",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          },
+          {
+            "expr": "clamp_max(increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"true\"}[2m]), 1)",
             "format": "table",
             "instant": true,
             "refId": "status"
@@ -166,44 +136,26 @@
         "transformations": [
           {"id": "seriesToColumns", "options": {"byField": "name"}},
           {"id": "organize", "options": {
-            "excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true, "Time 5": true, "Time 6": true, "Time 7": true, "__name__": true, "__name__ 1": true, "__name__ 2": true, "__name__ 3": true, "__name__ 4": true, "__name__ 5": true, "__name__ 6": true, "instance": true, "instance 1": true, "instance 2": true, "instance 3": true, "instance 4": true, "instance 5": true, "instance 6": true, "job": true, "job 1": true, "job 2": true, "job 3": true, "job 4": true, "job 5": true, "job 6": true, "key": true, "key 1": true, "key 2": true, "key 3": true, "key 4": true, "key 5": true, "key 6": true, "type": true, "type 1": true, "type 2": true, "type 3": true, "type 4": true, "type 5": true, "type 6": true, "group 1": true, "group 2": true, "group 3": true, "group 4": true, "group 5": true, "group 6": true, "success": true, "success 1": true, "success 2": true, "success 3": true, "success 4": true, "success 5": true, "success 6": true, "name 1": true, "name 2": true, "name 3": true, "name 4": true, "name 5": true, "name 6": true},
-            "renameByName": {"name": "Camera", "group": "Location", "Value #status": "Status", "Value #latency": "Latency (ms)", "Value #down1h": "Down 1h", "Value #down12h": "Down 12h", "Value #down3d": "Down 3d", "Value #down7d": "Down 7d", "Value #down30d": "Down 30d"}
+            "excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true, "Time 5": true, "Time 6": true, "Time 7": true, "Time 8": true, "__name__": true, "__name__ 1": true, "__name__ 2": true, "__name__ 3": true, "__name__ 4": true, "__name__ 5": true, "__name__ 6": true, "__name__ 7": true, "instance": true, "instance 1": true, "instance 2": true, "instance 3": true, "instance 4": true, "instance 5": true, "instance 6": true, "instance 7": true, "job": true, "job 1": true, "job 2": true, "job 3": true, "job 4": true, "job 5": true, "job 6": true, "job 7": true, "key": true, "key 1": true, "key 2": true, "key 3": true, "key 4": true, "key 5": true, "key 6": true, "key 7": true, "type": true, "type 1": true, "type 2": true, "type 3": true, "type 4": true, "type 5": true, "type 6": true, "type 7": true, "group 2": true, "group 3": true, "group 4": true, "group 5": true, "group 6": true, "group 7": true, "group 8": true, "success": true, "success 1": true, "success 2": true, "success 3": true, "success 4": true, "success 5": true, "success 6": true, "success 7": true, "name 1": true, "name 2": true, "name 3": true, "name 4": true, "name 5": true, "name 6": true, "name 7": true, "Value #A": true},
+            "indexByName": {},
+            "renameByName": {}
+          }},
+          {"id": "sortBy", "options": {"fields": [], "sort": [{"field": "group 1"}]}},
+          {"id": "organize", "options": {
+            "indexByName": {"group 1": 0, "name": 1, "Value #status": 2, "Value #latency": 3, "Value #down1h": 4, "Value #down12h": 5, "Value #down3d": 6, "Value #down7d": 7, "Value #down30d": 8},
+            "renameByName": {"group 1": "Location", "name": "Camera", "Value #status": "Status", "Value #latency": "Latency (ms)", "Value #down1h": "Down 1h", "Value #down12h": "Down 12h", "Value #down3d": "Down 3d", "Value #down7d": "Down 7d", "Value #down30d": "Down 30d"}
           }}
         ],
         "fieldConfig": {
           "defaults": {"custom": {"align": "left"}},
           "overrides": [
+            {"matcher": {"id": "byName", "options": "group 1"}, "properties": [{"id": "displayName", "value": "Location"}]},
+            {"matcher": {"id": "byName", "options": "Camera"}, "properties": [{"id": "links", "value": [{"title": "View Camera Detail", "url": "/d/camera-detail/camera-detail?var-camera=${__value.text}"}]}]},
             {"matcher": {"id": "byName", "options": "Status"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"1": {"text": "UP", "color": "green"}, "0": {"text": "DOWN", "color": "red"}}}]}, {"id": "custom.cellOptions", "value": {"type": "color-background"}}]},
             {"matcher": {"id": "byName", "options": "Latency (ms)"}, "properties": [{"id": "unit", "value": "ms"}, {"id": "decimals", "value": 1}]},
             {"matcher": {"id": "byRegexp", "options": "Down.*"}, "properties": [{"id": "decimals", "value": 0}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}}, {"id": "custom.cellOptions", "value": {"type": "color-background"}}]}
           ]
         }
-      },
-      {
-        "id": 20,
-        "title": "Response Time - $location",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 18},
-        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{
-          "expr": "gatus_results_duration_seconds{group=~\"$location\"} * 1000",
-          "legendFormat": "{{name}}"
-        }],
-        "fieldConfig": {"defaults": {"unit": "ms", "custom": {"drawStyle": "line", "fillOpacity": 10}}},
-        "options": {"legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"]}}
-      },
-      {
-        "id": 21,
-        "title": "Uptime History - $location",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 26},
-        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
-        "targets": [{
-          "expr": "increase(gatus_results_total{group=~\"$location\", success=\"true\"}[5m])",
-          "legendFormat": "{{name}} (success)"
-        }],
-        "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "fillOpacity": 80}}},
-        "options": {"legend": {"displayMode": "table", "placement": "right"}}
       }
     ]
   },

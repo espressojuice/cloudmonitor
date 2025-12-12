@@ -31,10 +31,12 @@ app = FastAPI(title="CloudMonitor Scanner")
 scan_results = []
 scan_in_progress = False
 monitored_devices = []
+locations = []
 
 # Config paths
 GATUS_CONFIG_PATH = os.environ.get('GATUS_CONFIG_PATH', '/config/gatus/config.yaml')
 MONITORED_FILE = os.environ.get('MONITORED_FILE', '/config/monitored.json')
+LOCATIONS_FILE = os.environ.get('LOCATIONS_FILE', '/config/locations.json')
 LOCATION = os.environ.get('LOCATION', 'edge')
 
 
@@ -49,6 +51,33 @@ class AddDevicesRequest(BaseModel):
 
 class RemoveDeviceRequest(BaseModel):
     ip: str
+
+
+class AddLocationRequest(BaseModel):
+    name: str
+
+
+def load_locations():
+    """Load locations from file."""
+    global locations
+    try:
+        if os.path.exists(LOCATIONS_FILE):
+            with open(LOCATIONS_FILE, 'r') as f:
+                locations = json.load(f)
+    except Exception as e:
+        print(f"Error loading locations: {e}")
+        locations = []
+    return locations
+
+
+def save_locations():
+    """Save locations to file."""
+    try:
+        Path(LOCATIONS_FILE).parent.mkdir(parents=True, exist_ok=True)
+        with open(LOCATIONS_FILE, 'w') as f:
+            json.dump(locations, f, indent=2)
+    except Exception as e:
+        print(f"Error saving locations: {e}")
 
 
 def load_monitored_devices():
@@ -87,25 +116,25 @@ def generate_gatus_config():
         ip = device['ip']
         name = device.get('name') or device.get('manufacturer') or 'Camera'
         location = device.get('location', LOCATION)  # Use device location or fallback to env
+        endpoint_name = f"{name} ({ip})"
 
         # ICMP ping check
         config['endpoints'].append({
-            'name': f"{name} ({ip})",
+            'name': endpoint_name,
             'group': f"{location}/cameras",
             'url': f"icmp://{ip}",
             'interval': '30s',
             'conditions': ['[CONNECTED] == true']
         })
 
-        # RTSP check if port was open
-        if device.get('ports', {}).get('rtsp'):
-            config['endpoints'].append({
-                'name': f"{name} RTSP ({ip})",
-                'group': f"{location}/cameras",
-                'url': f"tcp://{ip}:554",
-                'interval': '30s',
-                'conditions': ['[CONNECTED] == true']
-            })
+        # RTSP port 554 TCP check (always add for cameras)
+        config['endpoints'].append({
+            'name': endpoint_name,
+            'group': f"{location}/cameras",
+            'url': f"tcp://{ip}:554",
+            'interval': '30s',
+            'conditions': ['[CONNECTED] == true']
+        })
 
     # Add placeholder if no devices
     if not config['endpoints']:
@@ -127,8 +156,9 @@ def generate_gatus_config():
         print(f"Error writing Gatus config: {e}")
 
 
-# Load monitored devices on startup
+# Load data on startup
 load_monitored_devices()
+load_locations()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -231,6 +261,44 @@ async def remove_monitored(request: RemoveDeviceRequest):
     return {"status": "ok", "count": len(monitored_devices)}
 
 
+@app.get("/api/locations")
+async def get_locations():
+    """Get list of locations."""
+    return {"locations": locations}
+
+
+@app.post("/api/locations")
+async def add_location(request: AddLocationRequest):
+    """Add a new location."""
+    global locations
+
+    name = request.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Location name is required")
+
+    if name in locations:
+        raise HTTPException(status_code=409, detail="Location already exists")
+
+    locations.append(name)
+    save_locations()
+
+    return {"status": "ok", "locations": locations}
+
+
+@app.delete("/api/locations/{name}")
+async def delete_location(name: str):
+    """Delete a location."""
+    global locations
+
+    if name not in locations:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    locations.remove(name)
+    save_locations()
+
+    return {"status": "ok", "locations": locations}
+
+
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -281,7 +349,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
         .form-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .form-label { color: #888; font-size: 14px; }
-        input[type="text"] {
+        input[type="text"], select {
             background: #1a1a2e;
             border: 1px solid #444;
             color: #fff;
@@ -290,7 +358,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             font-size: 14px;
             width: 300px;
         }
-        input[type="text"]:focus { outline: none; border-color: #00d4ff; }
+        input[type="text"]:focus, select:focus { outline: none; border-color: #00d4ff; }
+        select { cursor: pointer; }
+        select option { background: #1a1a2e; }
+        select option:disabled { color: #666; }
 
         .btn {
             padding: 10px 20px;
@@ -428,6 +499,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div class="tabs">
             <button class="tab active" onclick="showTab('scan')">Scan Network</button>
             <button class="tab" onclick="showTab('monitored')">Monitored Devices</button>
+            <button class="tab" onclick="showTab('locations')">Locations</button>
         </div>
 
         <!-- Scan Tab -->
@@ -435,7 +507,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <div class="scan-form">
                 <div class="form-row" style="margin-bottom: 10px;">
                     <span class="form-label">Location:</span>
-                    <input type="text" id="location" value="" placeholder="e.g. Office, Warehouse, Site-A" style="width: 200px;">
+                    <select id="location" style="width: 200px;">
+                        <option value="" disabled selected>Select Location</option>
+                    </select>
+                    <input type="text" id="new-location" placeholder="New location name" style="width: 180px;">
+                    <button class="btn btn-secondary" onclick="addLocation()">Add Location</button>
                 </div>
                 <div class="form-row">
                     <span class="form-label">Subnets:</span>
@@ -471,6 +547,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 </div>
             </div>
         </div>
+
+        <!-- Locations Tab -->
+        <div id="locations-tab" class="tab-content">
+            <div class="scan-form">
+                <div class="form-row">
+                    <span class="form-label">New Location:</span>
+                    <input type="text" id="new-location-tab" placeholder="Enter location name" style="width: 250px;">
+                    <button class="btn btn-success" onclick="addLocationFromTab()">Add Location</button>
+                </div>
+            </div>
+            <div id="locations-list" style="margin-top: 20px;">
+                <div class="empty-state">
+                    <h3>No locations</h3>
+                    <p>Add a location above to get started</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="actions-bar" class="actions-bar">
@@ -483,14 +576,189 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         let selectedDevices = new Set();
         let pollInterval = null;
 
+        // Load locations on page load
+        document.addEventListener('DOMContentLoaded', loadLocations);
+
+        async function loadLocations() {
+            try {
+                const resp = await fetch('/api/locations');
+                const data = await resp.json();
+                renderLocationDropdown(data.locations);
+            } catch (e) {
+                console.error('Error loading locations:', e);
+            }
+        }
+
+        function renderLocationDropdown(locationsList) {
+            const select = document.getElementById('location');
+            const currentValue = select.value;
+
+            // Keep the default disabled option
+            select.innerHTML = '<option value="" disabled selected>Select Location</option>';
+
+            // Add all locations
+            locationsList.forEach(loc => {
+                const option = document.createElement('option');
+                option.value = loc;
+                option.textContent = loc;
+                select.appendChild(option);
+            });
+
+            // Restore previous selection if it still exists
+            if (currentValue && locationsList.includes(currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
+        async function addLocation() {
+            const input = document.getElementById('new-location');
+            const name = input.value.trim();
+
+            if (!name) {
+                alert('Please enter a location name');
+                input.focus();
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/locations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    alert(err.detail || 'Error adding location');
+                    return;
+                }
+
+                const data = await resp.json();
+                renderLocationDropdown(data.locations);
+
+                // Select the newly added location
+                document.getElementById('location').value = name;
+
+                // Clear the input
+                input.value = '';
+            } catch (e) {
+                alert('Error adding location: ' + e.message);
+            }
+        }
+
+        async function loadLocationsTab() {
+            try {
+                const resp = await fetch('/api/locations');
+                const data = await resp.json();
+                renderLocationsTab(data.locations);
+            } catch (e) {
+                console.error('Error loading locations:', e);
+            }
+        }
+
+        function renderLocationsTab(locationsList) {
+            const container = document.getElementById('locations-list');
+
+            if (!locationsList.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No locations</h3>
+                        <p>Add a location above to get started</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="results-header">
+                    <span class="results-count">${locationsList.length} location(s)</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Location Name</th>
+                            <th style="width: 120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${locationsList.map(loc => `
+                            <tr>
+                                <td><strong>${loc}</strong></td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteLocationFromTab('${loc}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function addLocationFromTab() {
+            const input = document.getElementById('new-location-tab');
+            const name = input.value.trim();
+
+            if (!name) {
+                alert('Please enter a location name');
+                input.focus();
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/locations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    alert(err.detail || 'Error adding location');
+                    return;
+                }
+
+                const data = await resp.json();
+                renderLocationsTab(data.locations);
+                renderLocationDropdown(data.locations);
+                input.value = '';
+            } catch (e) {
+                alert('Error adding location: ' + e.message);
+            }
+        }
+
+        async function deleteLocationFromTab(name) {
+            if (!confirm(`Delete location "${name}"?`)) return;
+
+            try {
+                const resp = await fetch(`/api/locations/${encodeURIComponent(name)}`, {
+                    method: 'DELETE'
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    alert(err.detail || 'Error deleting location');
+                    return;
+                }
+
+                const data = await resp.json();
+                renderLocationsTab(data.locations);
+                renderLocationDropdown(data.locations);
+            } catch (e) {
+                alert('Error deleting location: ' + e.message);
+            }
+        }
+
         function showTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelector(`.tab:nth-child(${tab === 'scan' ? 1 : 2})`).classList.add('active');
+            const tabIndex = tab === 'scan' ? 1 : tab === 'monitored' ? 2 : 3;
+            document.querySelector(`.tab:nth-child(${tabIndex})`).classList.add('active');
             document.getElementById(`${tab}-tab`).classList.add('active');
 
             if (tab === 'monitored') {
                 loadMonitored();
+            } else if (tab === 'locations') {
+                loadLocationsTab();
             }
         }
 
@@ -657,10 +925,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const devices = scanResults.filter(d => selectedDevices.has(d.ip));
             if (!devices.length) return;
 
-            const location = document.getElementById('location').value.trim();
+            const locationSelect = document.getElementById('location');
+            const location = locationSelect.value;
             if (!location) {
-                alert('Please enter a Location name before adding devices');
-                document.getElementById('location').focus();
+                alert('Please select a Location before adding devices');
+                locationSelect.focus();
                 return;
             }
 

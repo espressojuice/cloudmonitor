@@ -1,0 +1,134 @@
+{
+  "dashboard": {
+    "uid": "camera-detail",
+    "title": "Camera Detail",
+    "tags": ["cameras", "monitoring"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "refresh": "1m",
+    "templating": {
+      "list": [
+        {
+          "name": "camera",
+          "label": "Camera",
+          "type": "query",
+          "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+          "query": "label_values(gatus_results_total{type=\"ICMP\"}, name)",
+          "refresh": 2,
+          "includeAll": false,
+          "multi": false
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Ping Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{"expr": "clamp_max(increase(gatus_results_total{name=\"$camera\", type=\"ICMP\", success=\"true\"}[2m]), 1)", "instant": true}],
+        "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"1": {"text": "UP", "color": "green"}, "0": {"text": "DOWN", "color": "red"}}}], "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}}
+      },
+      {
+        "id": 6,
+        "title": "RTSP Port 554",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{"expr": "clamp_max(increase(gatus_results_total{name=\"$camera\", type=\"TCP\", success=\"true\"}[2m]), 1)", "instant": true}],
+        "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"1": {"text": "OPEN", "color": "green"}, "0": {"text": "CLOSED", "color": "red"}}}], "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}}
+      },
+      {
+        "id": 2,
+        "title": "Ping Latency",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{"expr": "gatus_results_duration_seconds{name=\"$camera\", type=\"ICMP\"} * 1000", "instant": true}],
+        "fieldConfig": {"defaults": {"unit": "ms", "decimals": 1, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 100}, {"color": "red", "value": 500}]}}}
+      },
+      {
+        "id": 3,
+        "title": "Dropped Pings (1h)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{"expr": "increase(gatus_results_total{name=\"$camera\", type=\"ICMP\", success=\"false\"}[1h]) OR on() vector(0)", "instant": true}],
+        "fieldConfig": {"defaults": {"decimals": 0, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}}}
+      },
+      {
+        "id": 4,
+        "title": "Dropped Pings (24h)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{"expr": "increase(gatus_results_total{name=\"$camera\", type=\"ICMP\", success=\"false\"}[24h]) OR on() vector(0)", "instant": true}],
+        "fieldConfig": {"defaults": {"decimals": 0, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}]}}}
+      },
+      {
+        "id": 5,
+        "title": "Dropped Pings (7d)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{"expr": "increase(gatus_results_total{name=\"$camera\", type=\"ICMP\", success=\"false\"}[7d]) OR on() vector(0)", "instant": true}],
+        "fieldConfig": {"defaults": {"decimals": 0, "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 20}]}}}
+      },
+      {
+        "id": 10,
+        "title": "Ping Response Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{
+          "expr": "gatus_results_duration_seconds{name=\"$camera\", type=\"ICMP\"} * 1000",
+          "legendFormat": "Ping Latency"
+        }],
+        "fieldConfig": {"defaults": {"unit": "ms", "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2}}},
+        "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+      },
+      {
+        "id": 12,
+        "title": "RTSP Port 554 Response Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [{
+          "expr": "gatus_results_duration_seconds{name=\"$camera\", type=\"TCP\"} * 1000",
+          "legendFormat": "TCP 554 Response"
+        }],
+        "fieldConfig": {"defaults": {"unit": "ms", "color": {"mode": "fixed", "fixedColor": "orange"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2}}},
+        "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+      },
+      {
+        "id": 11,
+        "title": "Check Results History",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+        "datasource": {"type": "prometheus", "uid": "P4169E866C3094E38"},
+        "targets": [
+          {
+            "expr": "increase(gatus_results_total{name=\"$camera\", type=\"ICMP\", success=\"true\"}[5m])",
+            "legendFormat": "Ping Success"
+          },
+          {
+            "expr": "increase(gatus_results_total{name=\"$camera\", type=\"ICMP\", success=\"false\"}[5m])",
+            "legendFormat": "Ping Failure"
+          },
+          {
+            "expr": "increase(gatus_results_total{name=\"$camera\", type=\"TCP\", success=\"true\"}[5m])",
+            "legendFormat": "RTSP Success"
+          },
+          {
+            "expr": "increase(gatus_results_total{name=\"$camera\", type=\"TCP\", success=\"false\"}[5m])",
+            "legendFormat": "RTSP Failure"
+          }
+        ],
+        "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "fillOpacity": 80}}, "overrides": [{"matcher": {"id": "byName", "options": "Ping Success"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]}, {"matcher": {"id": "byName", "options": "Ping Failure"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}, {"matcher": {"id": "byName", "options": "RTSP Success"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "blue"}}]}, {"matcher": {"id": "byName", "options": "RTSP Failure"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]}]},
+        "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+      }
+    ]
+  },
+  "overwrite": true
+}
