@@ -1,0 +1,97 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "cameras",
+    "title": "Camera Monitoring",
+    "tags": ["cameras", "cloudmonitor"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Camera Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "count(gatus_results_connected_total{group=~\".*cameras.*\"})",
+            "legendFormat": "Total Cameras"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Cameras Online",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "count(gatus_results_total{group=~\".*cameras.*\", success=\"true\"})",
+            "legendFormat": "Online"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Edge Locations",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "count(count by (group) (gatus_results_total{group=~\".*cameras.*\"}))",
+            "legendFormat": "Locations"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Camera Response Times",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "gatus_results_duration_seconds{group=~\".*cameras.*\"}",
+            "legendFormat": "{{name}}"
+          }
+        ],
+        "options": {
+          "legend": {"displayMode": "table", "placement": "right"}
+        }
+      },
+      {
+        "id": 5,
+        "title": "Camera Health Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "increase(gatus_results_total{group=~\".*cameras.*\", success=\"true\"}[5m])",
+            "legendFormat": "{{name}} (success)"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

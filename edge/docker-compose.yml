@@ -1,0 +1,74 @@
+services:
+  scanner:
+    build: ./scanner
+    image: ghcr.io/espressojuice/cloudmonitor/scanner:${VERSION:-latest}
+    container_name: cloudmonitor-scanner
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_RAW      # For ping
+    cap_drop:
+      - ALL
+    environment:
+      - LOCATION=${LOCATION:-edge}
+      - SCAN_INTERVAL_HOURS=${SCAN_INTERVAL_HOURS:-1}
+    volumes:
+      - gatus-config:/config/gatus
+
+  gatus:
+    image: twinproduction/gatus:v5.7.0
+    container_name: cloudmonitor-gatus
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_RAW      # For ICMP ping
+    cap_drop:
+      - ALL
+    volumes:
+      - gatus-config:/config:ro
+    command: ["--config", "/config/gatus/config.yaml"]
+    depends_on:
+      - scanner
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  vmagent:
+    image: victoriametrics/vmagent:v1.96.0
+    container_name: cloudmonitor-vmagent
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - '-promscrape.config=/etc/vmagent/vmagent.yml'
+      - '-remoteWrite.url=${REMOTE_WRITE_URL}'
+      - '-remoteWrite.basicAuth.username=${VM_AUTH_USER:-admin}'
+      - '-remoteWrite.basicAuth.password=${VM_AUTH_PASS}'
+      - '-remoteWrite.tmpDataPath=/vmagent-data'
+      - '-remoteWrite.maxDiskUsagePerURL=100MB'
+    volumes:
+      - ./config/vmagent:/etc/vmagent:ro
+      - vmagent-data:/vmagent-data
+    depends_on:
+      - gatus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8429/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  gatus-config:
+  vmagent-data:
