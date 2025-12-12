@@ -44,6 +44,7 @@ class ScanRequest(BaseModel):
 
 class AddDevicesRequest(BaseModel):
     devices: List[dict]
+    location: str = "default"
 
 
 class RemoveDeviceRequest(BaseModel):
@@ -85,11 +86,12 @@ def generate_gatus_config():
     for device in monitored_devices:
         ip = device['ip']
         name = device.get('name') or device.get('manufacturer') or 'Camera'
+        location = device.get('location', LOCATION)  # Use device location or fallback to env
 
         # ICMP ping check
         config['endpoints'].append({
             'name': f"{name} ({ip})",
-            'group': f"{LOCATION}/cameras",
+            'group': f"{location}/cameras",
             'url': f"icmp://{ip}",
             'interval': '30s',
             'conditions': ['[CONNECTED] == true']
@@ -99,7 +101,7 @@ def generate_gatus_config():
         if device.get('ports', {}).get('rtsp'):
             config['endpoints'].append({
                 'name': f"{name} RTSP ({ip})",
-                'group': f"{LOCATION}/cameras",
+                'group': f"{location}/cameras",
                 'url': f"tcp://{ip}:554",
                 'interval': '30s',
                 'conditions': ['[CONNECTED] == true']
@@ -206,6 +208,7 @@ async def add_monitored(request: AddDevicesRequest):
     for device in request.devices:
         if device['ip'] not in monitored_ips:
             device['added_at'] = datetime.now().isoformat()
+            device['location'] = request.location  # Store location with device
             monitored_devices.append(device)
             monitored_ips.add(device['ip'])
 
@@ -430,6 +433,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- Scan Tab -->
         <div id="scan-tab" class="tab-content active">
             <div class="scan-form">
+                <div class="form-row" style="margin-bottom: 10px;">
+                    <span class="form-label">Location:</span>
+                    <input type="text" id="location" value="" placeholder="e.g. Office, Warehouse, Site-A" style="width: 200px;">
+                </div>
                 <div class="form-row">
                     <span class="form-label">Subnets:</span>
                     <input type="text" id="subnets" value="{{SUBNETS}}" placeholder="192.168.1.0/24, 10.0.0.0/24">
@@ -650,11 +657,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const devices = scanResults.filter(d => selectedDevices.has(d.ip));
             if (!devices.length) return;
 
+            const location = document.getElementById('location').value.trim();
+            if (!location) {
+                alert('Please enter a Location name before adding devices');
+                document.getElementById('location').focus();
+                return;
+            }
+
             try {
                 await fetch('/api/monitored', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ devices })
+                    body: JSON.stringify({ devices, location })
                 });
 
                 // Refresh results
@@ -662,7 +676,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 updateActionsBar();
                 await checkScanStatus();
 
-                alert(`Added ${devices.length} device(s) to monitoring`);
+                alert(`Added ${devices.length} device(s) to monitoring at location "${location}"`);
             } catch (e) {
                 alert('Error adding devices: ' + e.message);
             }
@@ -698,6 +712,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <table>
                     <thead>
                         <tr>
+                            <th>Location</th>
                             <th>IP Address</th>
                             <th>Name</th>
                             <th>Manufacturer</th>
@@ -708,6 +723,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <tbody>
                         ${devices.map(d => `
                             <tr>
+                                <td><strong>${d.location || 'Unknown'}</strong></td>
                                 <td>${d.ip}</td>
                                 <td>${d.name || '-'}</td>
                                 <td>${d.manufacturer || 'Unknown'}</td>
