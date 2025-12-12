@@ -109,28 +109,22 @@
             "refId": "down1h"
           },
           {
-            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[12h])",
+            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[4h])",
             "format": "table",
             "instant": true,
-            "refId": "down12h"
+            "refId": "down4h"
           },
           {
-            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[3d])",
+            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[1d])",
             "format": "table",
             "instant": true,
-            "refId": "down3d"
+            "refId": "down1d"
           },
           {
             "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[7d])",
             "format": "table",
             "instant": true,
             "refId": "down7d"
-          },
-          {
-            "expr": "increase(gatus_results_total{group=~\"$location\", type=\"ICMP\", success=\"false\"}[30d])",
-            "format": "table",
-            "instant": true,
-            "refId": "down30d"
           }
         ],
         "transformations": [
@@ -142,8 +136,8 @@
           }},
           {"id": "sortBy", "options": {"fields": [], "sort": [{"field": "group 1"}]}},
           {"id": "organize", "options": {
-            "indexByName": {"group 1": 0, "name": 1, "Value #status": 2, "Value #latency": 3, "Value #down1h": 4, "Value #down12h": 5, "Value #down3d": 6, "Value #down7d": 7, "Value #down30d": 8},
-            "renameByName": {"group 1": "Location", "name": "Camera", "Value #status": "Status", "Value #latency": "Latency (ms)", "Value #down1h": "Down 1h", "Value #down12h": "Down 12h", "Value #down3d": "Down 3d", "Value #down7d": "Down 7d", "Value #down30d": "Down 30d"}
+            "indexByName": {"group 1": 0, "name": 1, "Value #status": 2, "Value #latency": 3, "Value #down1h": 4, "Value #down4h": 5, "Value #down1d": 6, "Value #down7d": 7},
+            "renameByName": {"group 1": "Location", "name": "Camera", "Value #status": "Status", "Value #latency": "Latency (ms)", "Value #down1h": "Down 1h", "Value #down4h": "Down 4h", "Value #down1d": "Down 1d", "Value #down7d": "Down 7d"}
           }}
         ],
         "fieldConfig": {
