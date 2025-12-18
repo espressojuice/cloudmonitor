@@ -123,7 +123,7 @@ def generate_gatus_config():
             'name': endpoint_name,
             'group': f"{location}/cameras",
             'url': f"icmp://{ip}",
-            'interval': '30s',
+            'interval': '10s',
             'conditions': ['[CONNECTED] == true']
         })
 
@@ -132,7 +132,7 @@ def generate_gatus_config():
             'name': endpoint_name,
             'group': f"{location}/cameras",
             'url': f"tcp://{ip}:554",
-            'interval': '30s',
+            'interval': '10s',
             'conditions': ['[CONNECTED] == true']
         })
 
